@@ -1,0 +1,357 @@
+{
+	"id":1030,
+	"status":"Analyze",
+	"severity":"Review",
+	"severityCode":4,
+	"state":"Existing",
+	"code":"CWARN.MEM.NONPOD",
+	"title":"Memory manipulation routine applied to a non-POD object",
+	"message":"Memory manipulation routine \u0027memcpy\u0027 is applied to a non-POD object",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp",
+	"method":"DhcpDebugSendPkt",
+	"owner":"unowned",
+	"taxonomyName":
+	"C and C++",
+	"dateOriginated":1498112462078,
+	"line":37,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1030,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[431],
+	"trace":[]
+}
+{
+	"id":1031,
+	"status":"Analyze",
+	"severity":"Error",
+	"severityCode":2,
+	"state":"Existing",
+	"code":"UFM.USE.MUST",
+	"title":"Use of Freed Memory",
+	"message":"Object \u0027ptr\u0027 was used at line 198 after being freed by calling \u0027free\u0027 at line 195",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/platform/common/src/jenkins_mem.cpp",
+	"method":"mem_hook_free",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":198,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1034,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[1020],
+	"trace":[
+		{
+			"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/common/src/jenkins_mem.cpp",
+			"entity":"mem_hook_free",
+			"lines":[
+				{
+					"line":195,
+					"text":"\u0027ptr\u0027 is freed by calling \u0027free\u0027."
+				},
+				{
+					"line":198,
+					"text":"Freed pointer \u0027ptr\u0027 is used by calling \u0027mem_change\u0027."
+				}]
+		}]
+}
+{
+	"id":1032,
+	"status":"Analyze",
+	"severity":"Critical",
+	"severityCode":1,
+	"state":"Existing",
+	"code":"LOCRET.RET",
+	"title":"Function returns address of local variable",
+	"message":"Address of a local variable is returned via return statement expression \u0027\u0026PR_NH_INFO(RepeatedPtrFieldBase::Get\u003cTypeHandler\u003e (index))\u0027.",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/lib/protobuf/google/protobuf/repeated_field.h",
+	"method":"Get",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":1037,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1035,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[325],
+	"trace":[
+		{
+		"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/lib/protobuf/google/protobuf/repeated_field.h",
+		"entity":"Get",
+		"lines":[
+			{
+				"line":1037,
+				"text":"Local address \u0027\u0026PR_NH_INFO(RepeatedPtrFieldBase::Get\u003cTypeHandler\u003e (index))\u0027 is returned"
+			},
+			{
+				"line":1037,
+				"text":"List of instantiations (may be incomplete)",
+				"trace":
+					{
+						"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/lib/protobuf/google/protobuf/repeated_field.h",
+						"entity":"Get",
+						"lines":[
+							{
+								"line":1037,
+								"text":"google::protobuf::RepeatedPtrField\u003cPR_NH_INFO\u003e::Get"
+							}]
+					}
+			}]
+		}]
+}
+{
+	"id":1033,
+	"status":"Analyze",
+	"severity":"Warning",
+	"severityCode":3,
+	"state":"Existing",
+	"code":"ITER.END.DEREF.MIGHT",
+	"title":"Dereference of \u0027end\u0027 iterator",
+	"message":"Iterator \u0027ot\u0027 is dereferenced at line 175 when it can be equal to value returned by call to [r]end().",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/proto/openflow/of_parser/source/of15common.cpp",
+	"method":"operator\u003d\u003d",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":175,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1046,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[838],
+	"trace":[
+		{
+			"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/proto/openflow/of_parser/source/of15common.cpp",
+			"entity":"operator\u003d\u003d",
+			"lines":[
+			{
+				"line":171,
+				"text":"iterator \u0027ot\u0027 is retrieved for container \u0027\u0026other.async_list_\u0027"
+			},
+			{
+				"line":175,
+				"text":"Iterator \u0027ot\u0027 is dereferenced / used"
+			}]
+		}]
+}
+{
+	"id":1034,
+	"status":"Analyze",
+	"severity":"Review",
+	"severityCode":4,
+	"state":"New",
+	"code":"CWARN.MEM.NONPOD",
+	"title":"Memory manipulation routine applied to a non-POD object",
+	"message":"Memory manipulation routine \u0027memset\u0027 is applied to a non-POD object",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/core/fal_agent/src/fal_agent_main.cpp",
+	"method":"req_get_mac_classifer_entry",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1503029449743,
+	"line":5140,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d2524,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[2523],
+	"trace":[]
+}
+{
+	"id":1035,
+	"status":"Not a Problem",
+	"severity":"Critical",
+	"severityCode":1,
+	"state":"Existing",
+	"code":"ABV.GENERAL",
+	"title":"Buffer Overflow - Array Index Out of Bounds",
+	"message":"Array \u0027buffer.msg_body\u0027 of size 1024 may use index value(s) 1024..16201",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/core/arp/src/arp_pickup.cpp",
+	"method":"send_arp_req_pkt_internal",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":4282,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1036,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[102],
+	"trace":[
+		{
+			"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/core/arp/src/arp_pickup.cpp",
+			"entity":"send_arp_req_pkt_internal",
+			"lines":[
+				{
+					"line":4282,
+					"text":"Possible parameter values: this-\u003em_enable_arp_resume \u003e\u003d 0."
+				},
+				{
+					"line":4282,
+					"text":"Array \u0027buffer.msg_body\u0027 size is 1024."
+				},
+				{
+					"line":4282,
+					"text":"\u0027buffer.msg_body\u0027 is passed as an argument to function \u0027zc_fal_sendPacketOut\u0027.",
+					"trace":
+						{
+							"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/fal/src/zc_falapi_packet.cpp",
+							"entity":"zc_fal_sendPacketOut",
+							"lines":[
+								{
+									"line":118,
+									"text":"\u0027zc_fal_sendPacketOutByActions\u0027 is called.",
+									"trace":
+										{
+											"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/fal/src/zc_falapi_packet.cpp",
+											"entity":"zc_fal_sendPacketOutByActions",
+											"lines":[
+												{
+													"line":127,
+													"text":"\u0027zc_drv_sendPacket\u0027 is called.",
+													"trace":
+														{
+															"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/fal/src/zc_fal_core_driver.cpp",
+															"entity":"zc_drv_sendPacket",
+															"lines":[
+																{
+																	"line":1461,
+																	"text":"\u0027memcpy\u0027 is called."
+																}]
+														}
+												}]
+										}
+								}]
+						}
+				}]
+		}]
+}
+{
+	"id":1036,
+	"status":"Analyze",
+	"severity":"Review",
+	"severityCode":4,
+	"state":"Existing",
+	"code":"CWARN.MEM.NONPOD",
+	"title":"Memory manipulation routine applied to a non-POD object",
+	"message":"Memory manipulation routine \u0027memset\u0027 is applied to a non-POD object",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp",
+	"method":"DhcpSetPoolInfo",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":54,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1058,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[434],
+	"trace":[]
+}
+{
+	"id":1037,
+	"status":"Analyze",
+	"severity":"Review",
+	"severityCode":4,
+	"state":"Existing",
+	"code":"CWARN.MEM.NONPOD",
+	"title":"Memory manipulation routine applied to a non-POD object",
+	"message":"Memory manipulation routine \u0027memset\u0027 is applied to a non-POD object",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp",
+	"method":"DhcpSetStaticAddrInfo",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":106,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1393,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[432],
+	"trace":[]
+}
+{
+	"id":1038,
+	"status":"Analyze",
+	"severity":"Critical",
+	"severityCode":1,
+	"state":"New",
+	"code":"LOCRET.RET",
+	"title":"Function returns address of local variable",
+	"message":"Address of a local variable is returned via return statement expression \u0027\u0026PR_MIX_FLOW_RULE(RepeatedPtrFieldBase::Get\u003cTypeHandler\u003e (index))\u0027.",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/lib/protobuf/google/protobuf/repeated_field.h",
+	"method":"Get",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498112462078,
+	"line":1037,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1384,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[304],
+	"trace":[
+		{
+			"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/lib/protobuf/google/protobuf/repeated_field.h",
+			"entity":"Get",
+			"lines":[
+				{
+					"line":1037,
+					"text":"Local address \u0027\u0026PR_MIX_FLOW_RULE(RepeatedPtrFieldBase::Get\u003cTypeHandler\u003e (index))\u0027 is returned"
+				},
+				{
+					"line":1037,
+					"text":"List of instantiations (may be incomplete)",
+					"trace":
+					{
+						"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/lib/protobuf/google/protobuf/repeated_field.h",
+						"entity":"Get",
+						"lines":[
+							{
+								"line":1037,
+								"text":"google::protobuf::RepeatedPtrField\u003cPR_MIX_FLOW_RULE\u003e::Get"
+							}]
+					}
+				}]
+		}]
+}
+{
+	"id":1039,
+	"status":"Not a Problem",
+	"severity":"Critical",
+	"severityCode":1,
+	"state":"Existing",
+	"code":"ABV.GENERAL",
+	"title":"Buffer Overflow - Array Index Out of Bounds",
+	"message":"Array \u0027buffer.msg_body\u0027 of size 1024 may use index value(s) 1024..16201",
+	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/core/arp/src/arp_pickup.cpp",
+	"method":"broadcastArpReq",
+	"owner":"unowned",
+	"taxonomyName":"C and C++",
+	"dateOriginated":1498804519217,
+	"line":3030,
+	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d2031,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",
+	"issueIds":[2030],
+	"trace":[
+		{
+			"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/core/arp/src/arp_pickup.cpp",
+			"entity":"broadcastArpReq",
+			"lines":[
+				{
+					"line":3029,
+					"text":"Possible parameter values: type [0,8], hdr-\u003eapi_id [0,4294967295], hdr-\u003etid [0,4294967295]."
+				},
+				{
+					"line":3030,
+					"text":"Array \u0027buffer.msg_body\u0027 size is 1024."
+				},
+				{
+					"line":3029,
+					"text":"\u0027buffer.msg_body\u0027 is passed as an argument to function \u0027zc_fal_sendPacketOut\u0027.",
+					"trace":
+						{
+							"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/fal/src/zc_falapi_packet.cpp",
+							"entity":"zc_fal_sendPacketOut",
+							"lines":[
+								{
+									"line":118,
+									"text":"\u0027zc_fal_sendPacketOutByActions\u0027 is called.",
+									"trace":
+										{
+											"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/fal/src/zc_falapi_packet.cpp",
+											"entity":"zc_fal_sendPacketOutByActions",
+											"lines":[
+												{
+													"line":127,
+													"text":"\u0027zc_drv_sendPacket\u0027 is called.",
+													"trace":
+														{
+															"file":"/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/code/platform/fal/src/zc_fal_core_driver.cpp",
+															"entity":"zc_drv_sendPacket",
+															"lines":[
+																{
+																	"line":1461,
+																	"text":"\u0027memcpy\u0027 is called."
+																}]
+														}
+												}]
+										}
+								}]
+						}
+				}]
+		}]
+}
