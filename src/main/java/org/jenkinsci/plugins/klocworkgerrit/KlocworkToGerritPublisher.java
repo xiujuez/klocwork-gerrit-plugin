@@ -59,6 +59,7 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
 
     private static final String DEFAULT_KLOCWORK_REPORT_PATH = "./klocwork-report.json";
     private static final String DEFAULT_PROJECT_PATH = "";
+    private static final String DEFAULT_KLOCWORK_URL = "http://localhost:8080";
     private static final String DEFAULT_CATEGORY = "Code-Review";
     private static final int DEFAULT_SCORE = 0;
     private static final NotifyHandling DEFAULT_NOTIFICATION_NO_ISSUES = NotifyHandling.NONE;
@@ -69,6 +70,7 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
     public static final String GERRIT_NAME_ENV_VAR_NAME = "GERRIT_NAME";
     public static final String GERRIT_PATCHSET_NUMBER_ENV_VAR_NAME = "GERRIT_PATCHSET_NUMBER";
 
+    private final String klocworkURL;
     private List<SubJobConfig> subJobConfigs;
     private final String severity;
     private final boolean changedLinesOnly;
@@ -91,13 +93,14 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
 
 
     @DataBoundConstructor
-    public KlocworkToGerritPublisher(List<SubJobConfig> subJobConfigs,
+    public KlocworkToGerritPublisher(String klocworkURL, List<SubJobConfig> subJobConfigs,
                                   String severity, boolean changedLinesOnly, boolean newIssuesOnly,
                                   String noIssuesToPostText, String someIssuesToPostText, String issueComment,
                                   boolean overrideCredentials, String httpUsername, String httpPassword,
                                   boolean postScore, String category, String noIssuesScore, String issuesScore,
                                   String noIssuesNotification, String issuesNotification,
                                   boolean markFailure) {
+        this.klocworkURL = MoreObjects.firstNonNull(klocworkURL, DEFAULT_KLOCWORK_URL);
         this.subJobConfigs = subJobConfigs;
         this.severity = MoreObjects.firstNonNull(severity, Severity.Error.name());
         this.changedLinesOnly = changedLinesOnly;
@@ -141,6 +144,10 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
 
     public boolean isNewIssuesOnly() {
         return newIssuesOnly;
+    }
+
+    public String getKlocworkURL() {
+        return klocworkURL;
     }
 
     public String getNoIssuesToPostText() {
@@ -445,7 +452,7 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
                                     ReviewInput.CommentInput commentInput = new ReviewInput.CommentInput();
                                     commentInput.id = input.getId().toString();
                                     commentInput.line = input.getLine();
-                                    commentInput.message = new CustomIssueFormatter(input, issueComment).getMessage();
+                                    commentInput.message = new CustomIssueFormatter(input, issueComment, getKlocworkURL()).getMessage();
                                     return commentInput;
                                 }
 

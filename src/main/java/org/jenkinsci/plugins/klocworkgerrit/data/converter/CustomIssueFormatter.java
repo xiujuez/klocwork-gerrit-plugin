@@ -20,10 +20,12 @@ public class CustomIssueFormatter implements IssueFormatter, TagFormatter<Custom
 
     private Issue issue;
     private String text;
+    private String host;
 
-    public CustomIssueFormatter(Issue issue, String text) {
+    public CustomIssueFormatter(Issue issue, String text, String host) {
         this.issue = issue;
         this.text = prepareText(text, DEFAULT_ISSUE_COMMENT_TEXT);
+        this.host = host;
     }
 
     private static String prepareText(String text, String defaultValue) {
@@ -58,11 +60,31 @@ public class CustomIssueFormatter implements IssueFormatter, TagFormatter<Custom
                 return issue.getTitle();
             case MESSAGE:
                 return issue.getMessage();
-            case URL:
-                return issue.getUrl();
+            case RULE_URL:
+                return getRuleLink(issue.getCode());
             default:
                 return null;
         }
+    }
+
+    protected String getRuleLink(String rule) {
+        if (host != null) {
+            StringBuilder sb = new StringBuilder();
+            String url = host.trim();
+            if (!(url.startsWith("http://") || host.startsWith("https://"))) {
+                sb.append("http://");
+            }
+            sb.append(url);
+            if (!(url.endsWith("/"))) {
+                sb.append("/");
+            }
+            sb.append("documentation/help/reference/");
+            sb.append(rule.toLowerCase());
+            sb.append(".htm?highlight=");
+            sb.append(rule);
+            return sb.toString();
+        }
+        return rule;
     }
 
     public enum Tag {
@@ -73,7 +95,7 @@ public class CustomIssueFormatter implements IssueFormatter, TagFormatter<Custom
         METHOD("<method>"),
         TITLE("<title>"),
         MESSAGE("<message>"),
-        URL("<url>");
+        RULE_URL("<rule_url>");
 
         private final String name;
 

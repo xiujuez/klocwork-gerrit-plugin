@@ -22,9 +22,9 @@ public class CustomIssueFormatterTest {
     @Test
     public void testUserMessage() throws IOException, InterruptedException, URISyntaxException {
         Issue i = getIssue();
-        String text = "<severity> Klocwork violation:\n\n<id> <title>\n<message>\n\n\n<file> <line>:<method>\n\n\nRead more: <url>";
-        String expectedResult = "Review Klocwork violation:\n\n1030 Memory manipulation routine applied to a non-POD object\nMemory manipulation routine \u0027memcpy\u0027 is applied to a non-POD object\n\n\n/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp 37:DhcpDebugSendPkt\n\n\nRead more: http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1030,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027";
-        CustomIssueFormatter basicIssueConverter = new CustomIssueFormatter(i, text);
+        String text = "<severity> Klocwork violation:\n\n<id> <title>\n<message>\n\n\n<file> <line>:<method>\n\n\nRead more: <rule_url>";
+        String expectedResult = "Review Klocwork violation:\n\n1030 Memory manipulation routine applied to a non-POD object\nMemory manipulation routine \u0027memcpy\u0027 is applied to a non-POD object\n\n\n/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp 37:DhcpDebugSendPkt\n\n\nRead more: http://localhost:8080/documentation/help/reference/cwarn.mem.nonpod.htm?highlight=CWARN.MEM.NONPOD";
+        CustomIssueFormatter basicIssueConverter = new CustomIssueFormatter(i, text, "http://localhost:8080");
         Assert.assertEquals(expectedResult, basicIssueConverter.getMessage());
     }
 
@@ -32,11 +32,19 @@ public class CustomIssueFormatterTest {
     public void testDefaultMessage() throws IOException, InterruptedException, URISyntaxException {
         Issue i = getIssue();
         String text = "  ";
-        String expectedResult = "Review Klocwork violation:\n\n\nMemory manipulation routine \u0027memcpy\u0027 is applied to a non-POD object\n\n\nRead more: http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1030,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027";
-        CustomIssueFormatter basicIssueConverter = new CustomIssueFormatter(i, text);
+        String expectedResult = "Review Klocwork violation:\n\n\nMemory manipulation routine \u0027memcpy\u0027 is applied to a non-POD object\n\n\nRead more: http://localhost:8080/documentation/help/reference/cwarn.mem.nonpod.htm?highlight=CWARN.MEM.NONPOD";
+        CustomIssueFormatter basicIssueConverter = new CustomIssueFormatter(i, text, "http://localhost:8080");
         Assert.assertEquals(expectedResult, basicIssueConverter.getMessage());
     }
 
+    @Test
+    public void testUnknownUrl() throws IOException, InterruptedException, URISyntaxException {
+        Issue i = getIssue();
+        String text = "<severity> Klocwork violation:\n\n\n<message>\n\n\nRead more: <rule_url>";
+        String expectedResult = "Review Klocwork violation:\n\n\nMemory manipulation routine 'memcpy' is applied to a non-POD object\n\n\nRead more: CWARN.MEM.NONPOD";
+        CustomIssueFormatter basicIssueConverter = new CustomIssueFormatter(i, text, null);
+        Assert.assertEquals(expectedResult, basicIssueConverter.getMessage());
+    }
     private Issue getIssue() throws URISyntaxException, IOException, InterruptedException {
         URL url = getClass().getClassLoader().getResource("filter.json");
 

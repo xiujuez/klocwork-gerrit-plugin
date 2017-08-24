@@ -42,29 +42,29 @@ public class KlocworkToGerritPublisherTest {
         Assert.assertEquals(10, report.getIssues().size());
 
         // severity predicate
-        Iterable<Issue> issues = new KlocworkToGerritPublisher(null, Severity.Critical.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        Iterable<Issue> issues = new KlocworkToGerritPublisher("", null, Severity.Critical.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(4, Sets.newHashSet(issues).size());
 
-        issues = new KlocworkToGerritPublisher(null, Severity.Error.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Error.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(5, Sets.newHashSet(issues).size());
 
-        issues = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(10, Sets.newHashSet(issues).size());
 
-        issues = new KlocworkToGerritPublisher(null, Severity.Warning.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Warning.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(6, Sets.newHashSet(issues).size());
 
         // new issues only predicate
-        issues = new KlocworkToGerritPublisher(null, Severity.Critical.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Critical.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(1, Sets.newHashSet(issues).size());
 
-        issues = new KlocworkToGerritPublisher(null, Severity.Error.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Error.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(1, Sets.newHashSet(issues).size());
 
-        issues = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(2, Sets.newHashSet(issues).size());
 
-        issues = new KlocworkToGerritPublisher(null, Severity.Warning.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
+        issues = new KlocworkToGerritPublisher("", null, Severity.Warning.name(), true, true, "", "", "", false, "", "", true, "", "0", "0", "", "", true).filterIssuesByPredicates(report.getIssues());
         Assert.assertEquals(1, Sets.newHashSet(issues).size());
 
     }
@@ -119,7 +119,7 @@ public class KlocworkToGerritPublisherTest {
 
         SubJobConfig config1 = new SubJobConfig("/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/", "report1.json");
         SubJobConfig config2 = new SubJobConfig("/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/", "report2.json");
-        KlocworkToGerritPublisher klocworkToGerritPublisher = new KlocworkToGerritPublisher(Arrays.asList(config1, config2), Severity.Review.name(), true, false, "", "", "",  false, "", "",true, "", "0", "0", "", "", true);
+        KlocworkToGerritPublisher klocworkToGerritPublisher = new KlocworkToGerritPublisher("", Arrays.asList(config1, config2), Severity.Review.name(), true, false, "", "", "",  false, "", "",true, "", "0", "0", "", "", true);
         String resourcePath = getClass().getClassLoader().getResource("filter.json").getPath();
         FilePath resourceFolder = new FilePath(new File(resourcePath).getParentFile());
         List<KlocworkToGerritPublisher.ReportInfo> reportInfos = klocworkToGerritPublisher.readKlocworkReports(null, resourceFolder);//todo assert
@@ -155,7 +155,7 @@ public class KlocworkToGerritPublisherTest {
         RevisionApi revApi = new DummyRevisionApi(path2changedValues);
 
 
-        KlocworkToGerritPublisher builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true);
+        KlocworkToGerritPublisher builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false, "", "", "", false, "", "", true, "", "0", "0", "", "", true);
         builder.filterIssuesByChangedLines(multimap, revApi);
 
         // list of lines commented by klocwork : 37, 54, 106
@@ -176,7 +176,7 @@ public class KlocworkToGerritPublisherTest {
         Multimap<String, Issue> finalIssues = LinkedListMultimap.create();
         finalIssues.put("code/app/dhcps/src/dhcp_debug.cpp", readreport().getIssues().get(0));
         finalIssues.put("code/app/dhcps/src/dhcp_debug.cpp", readreport().getIssues().get(7));
-        KlocworkToGerritPublisher builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false,
+        KlocworkToGerritPublisher builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "+1", "-1", "NONE", "OWNER", true);
         ReviewInput reviewResult = builder.getReviewResult(finalIssues);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
@@ -185,7 +185,7 @@ public class KlocworkToGerritPublisherTest {
         Assert.assertEquals(-1, reviewResult.labels.get("Test").intValue());
         Assert.assertEquals(NotifyHandling.OWNER, reviewResult.notify);
 
-        builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false,
+        builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", false, "Test", "1", "-1", null, null, true);
         reviewResult = builder.getReviewResult(finalIssues);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
@@ -193,7 +193,7 @@ public class KlocworkToGerritPublisherTest {
         Assert.assertEquals(null, reviewResult.labels);
         Assert.assertEquals(NotifyHandling.OWNER, reviewResult.notify);
 
-        builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false,
+        builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "0", "0", null, null, true);
         reviewResult = builder.getReviewResult(finalIssues);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
@@ -202,7 +202,7 @@ public class KlocworkToGerritPublisherTest {
         Assert.assertEquals(0, reviewResult.labels.get("Test").intValue());
         Assert.assertEquals(NotifyHandling.OWNER, reviewResult.notify);
 
-        builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false,
+        builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "1test", "-1test", "NONE", "ALL", true);
         reviewResult = builder.getReviewResult(finalIssues);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
@@ -211,7 +211,7 @@ public class KlocworkToGerritPublisherTest {
         Assert.assertEquals(0, reviewResult.labels.get("Test").intValue());
         Assert.assertEquals(NotifyHandling.ALL, reviewResult.notify);
 
-        builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false,
+        builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "1", "-1", null, null, true);
         finalIssues = LinkedListMultimap.create();
         reviewResult = builder.getReviewResult(finalIssues);
@@ -221,7 +221,7 @@ public class KlocworkToGerritPublisherTest {
         Assert.assertEquals(+1, reviewResult.labels.get("Test").intValue());
         Assert.assertEquals(NotifyHandling.NONE, reviewResult.notify);
 
-        builder = new KlocworkToGerritPublisher(null, Severity.Review.name(), true, false,
+        builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "1", "-1", "OWNER_REVIEWERS", "ALL", true);
         finalIssues = LinkedListMultimap.create();
         reviewResult = builder.getReviewResult(finalIssues);

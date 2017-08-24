@@ -10,6 +10,11 @@
       Creates a text field that shows the value of the "path" property.
       When submitted, it will be passed to the corresponding constructor parameter.
     -->
+    <f:section title="${%jenkins.plugin.settings.section.klocwork.name}">
+        <f:entry title="${%jenkins.plugin.settings.klocwork.url}" field="klocworkURL">
+            <f:textbox default="http://localhost:8080"/>
+        </f:entry>
+    </f:section>
 
     <f:section title="${%jenkins.plugin.settings.section.project.name}">
         <f:entry title="" field="subJobConfigs">
