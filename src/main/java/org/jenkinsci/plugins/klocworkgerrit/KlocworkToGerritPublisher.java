@@ -274,6 +274,8 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
                 }
             });
 
+            String projectPath = getProjectPath(file2issues, files);
+
             logMessage(listener, "jenkins.plugin.report.filtered.files", Level.INFO, file2issues.size());
 
             file2issues = replaceFilenameToIssuesMapByRevisionFilename(file2issues, files);
@@ -285,7 +287,7 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
             }
 
             // Step 6 - Send review to Gerrit
-            ReviewInput reviewInput = getReviewResult(file2issues);
+            ReviewInput reviewInput = getReviewResult(file2issues, projectPath);
 
             // Step 7 - Post review
             revision.review(reviewInput);
@@ -426,7 +428,7 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
     }
 
     @VisibleForTesting
-    ReviewInput getReviewResult(Multimap<String, Issue> finalIssues) {
+    ReviewInput getReviewResult(Multimap<String, Issue> finalIssues, String projectPath) {
         String reviewMessage = getReviewMessage(finalIssues);
         ReviewInput reviewInput = new ReviewInput().message(reviewMessage);
 
@@ -438,30 +440,23 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
             reviewInput.label(category, getReviewMark(finalIssuesCount));
         }
 
-        reviewInput.comments = new HashMap<String, List<ReviewInput.CommentInput>>();
-        for (String file : finalIssues.keySet()) {
-            reviewInput.comments.put(file, Lists.newArrayList(
-                    Collections2.transform(finalIssues.get(file),
-                            new Function<Issue, ReviewInput.CommentInput>() {
-                                @Nullable
-                                @Override
-                                public ReviewInput.CommentInput apply(@Nullable Issue input) {
-                                    if (input == null) {
-                                        return null;
-                                    }
-                                    ReviewInput.CommentInput commentInput = new ReviewInput.CommentInput();
-                                    commentInput.id = input.getId().toString();
-                                    commentInput.line = input.getLine();
-                                    commentInput.message = new CustomIssueFormatter(input, issueComment, getKlocworkURL()).getMessage();
-                                    return commentInput;
-                                }
+        ReviewCommentFormatter commentFormatter = new ReviewCommentFormatter(projectPath, getIssueComment(), getKlocworkURL());
+        commentFormatter.generateReviewComment(reviewInput, finalIssues);
 
-                            }
-                    )
-                    )
-            );
-        }
         return reviewInput;
+    }
+
+    String getProjectPath(Multimap<String, Issue> file2issues, Map<String, FileInfo> files) {
+        Map<String, Collection<Issue>> file2issuesMap = file2issues.asMap();
+
+        for (String key : file2issuesMap.keySet()) {
+            for (String filename : files.keySet()) {
+                if (key.indexOf(filename) != -1) {
+                    return key.replaceFirst(filename, "");
+                }
+            }
+        }
+        return "";
     }
 
     Multimap<String, Issue> replaceFilenameToIssuesMapByRevisionFilename(Multimap<String, Issue> file2issues, Map<String, FileInfo> files) {
@@ -546,7 +541,6 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
     /**
      * Descriptor for {@link KlocworkToGerritPublisher}. Used as a singleton.
      * The class is marked as public so that it can be accessed from views.
-     * <p>
      * <p>
      * See <tt>src/main/resources/hudson/plugins/hello_world/KlocworkToGerritBuilder/*.jelly</tt>
      * for the actual HTML fragment for the configuration screen.

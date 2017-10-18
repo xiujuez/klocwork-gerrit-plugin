@@ -173,12 +173,13 @@ public class KlocworkToGerritPublisherTest {
 
     @Test
     public void getReviewResultTest() throws InterruptedException, IOException, URISyntaxException, RestApiException {
+        String projectPath = "/home/share/wireline-vdc-jenkins/shared_work_space/c-zxj-code-quality-master/build/30/";
         Multimap<String, Issue> finalIssues = LinkedListMultimap.create();
         finalIssues.put("code/app/dhcps/src/dhcp_debug.cpp", readreport().getIssues().get(0));
         finalIssues.put("code/app/dhcps/src/dhcp_debug.cpp", readreport().getIssues().get(7));
         KlocworkToGerritPublisher builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "+1", "-1", "NONE", "OWNER", true);
-        ReviewInput reviewResult = builder.getReviewResult(finalIssues);
+        ReviewInput reviewResult = builder.getReviewResult(finalIssues, projectPath);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
         Assert.assertEquals(1, reviewResult.comments.size());
         Assert.assertEquals(1, reviewResult.labels.size());
@@ -187,7 +188,7 @@ public class KlocworkToGerritPublisherTest {
 
         builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", false, "Test", "1", "-1", null, null, true);
-        reviewResult = builder.getReviewResult(finalIssues);
+        reviewResult = builder.getReviewResult(finalIssues, projectPath);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
         Assert.assertEquals(1, reviewResult.comments.size());
         Assert.assertEquals(null, reviewResult.labels);
@@ -195,7 +196,7 @@ public class KlocworkToGerritPublisherTest {
 
         builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "0", "0", null, null, true);
-        reviewResult = builder.getReviewResult(finalIssues);
+        reviewResult = builder.getReviewResult(finalIssues, projectPath);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
         Assert.assertEquals(1, reviewResult.comments.size());
         Assert.assertEquals(1, reviewResult.labels.size());
@@ -204,7 +205,7 @@ public class KlocworkToGerritPublisherTest {
 
         builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "1test", "-1test", "NONE", "ALL", true);
-        reviewResult = builder.getReviewResult(finalIssues);
+        reviewResult = builder.getReviewResult(finalIssues, projectPath);
         Assert.assertEquals("Some Issues Header", reviewResult.message);
         Assert.assertEquals(1, reviewResult.comments.size());
         Assert.assertEquals(1, reviewResult.labels.size());
@@ -214,7 +215,7 @@ public class KlocworkToGerritPublisherTest {
         builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "1", "-1", null, null, true);
         finalIssues = LinkedListMultimap.create();
-        reviewResult = builder.getReviewResult(finalIssues);
+        reviewResult = builder.getReviewResult(finalIssues, projectPath);
         Assert.assertEquals("No Issues Header", reviewResult.message);
         Assert.assertEquals(0, reviewResult.comments.size());
         Assert.assertEquals(1, reviewResult.labels.size());
@@ -224,7 +225,7 @@ public class KlocworkToGerritPublisherTest {
         builder = new KlocworkToGerritPublisher("", null, Severity.Review.name(), true, false,
                 "No Issues Header", "Some Issues Header", "Issue Comment", false, "", "", true, "Test", "1", "-1", "OWNER_REVIEWERS", "ALL", true);
         finalIssues = LinkedListMultimap.create();
-        reviewResult = builder.getReviewResult(finalIssues);
+        reviewResult = builder.getReviewResult(finalIssues, projectPath);
         Assert.assertEquals("No Issues Header", reviewResult.message);
         Assert.assertEquals(0, reviewResult.comments.size());
         Assert.assertEquals(1, reviewResult.labels.size());

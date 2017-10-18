@@ -45,4 +45,66 @@ public class Trace {
                 ", lines=" + lines +
                 '}';
     }
+
+    public static String toString(Trace trace, int indent) {
+        if (trace == null) return "";
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append('\n');
+
+        for (int i=0; i<indent; i++) {
+            sb.append('\t');
+        }
+        sb.append("Trace{\n");
+
+        for (int i=0; i<indent + 1; i++) {
+            sb.append('\t');
+        }
+        sb.append("file: " + trace.getFile() + '\n');
+
+        for (int i=0; i<indent + 1; i++) {
+            sb.append('\t');
+        }
+        sb.append("method:" + trace.getEntity());
+
+        sb.append(Line.toString(trace.getLines(), indent + 1));
+
+        for (int i=0; i<indent; i++) {
+            sb.append('\t');
+        }
+        sb.append("}");
+        sb.append('\n');
+        for (int i=0; i<indent-1; i++) {
+            sb.append('\t');
+        }
+        return sb.toString();
+
+        /* return  "\nTrace{\n" +
+                "file: " + trace.getFile() + '\n' +
+                "method:" + trace.getEntity() +
+                Line.toString(trace.getLines()) +
+                "}";*/
+    }
+
+    public static String toString(List<Trace> traces, int indent) {
+        if (traces == null) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int i=0; i<indent; i++) {
+            sb.append('\t');
+        }
+        sb.append("Traces:{");
+
+        for (Trace trace : traces) {
+            sb.append(Trace.toString(trace, indent + 1));
+        }
+
+        sb.append("}");
+
+        return sb.toString();
+    }
 }

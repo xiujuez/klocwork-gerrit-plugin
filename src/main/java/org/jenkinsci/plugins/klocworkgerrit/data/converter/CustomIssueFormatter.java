@@ -60,6 +60,8 @@ public class CustomIssueFormatter implements IssueFormatter, TagFormatter<Custom
                 return issue.getTitle();
             case MESSAGE:
                 return issue.getMessage();
+            case TRACE:
+                return Trace.toString(issue.getTrace(), 0);
             case RULE_URL:
                 return getRuleLink(issue.getCode());
             default:
@@ -95,6 +97,7 @@ public class CustomIssueFormatter implements IssueFormatter, TagFormatter<Custom
         METHOD("<method>"),
         TITLE("<title>"),
         MESSAGE("<message>"),
+        TRACE("<trace>"),
         RULE_URL("<rule_url>");
 
         private final String name;

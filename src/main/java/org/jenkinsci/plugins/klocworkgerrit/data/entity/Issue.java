@@ -145,7 +145,7 @@ public class Issue {
         return issueIds;
     }
 
-    private List<Trace> getTrace() {
+    public List<Trace> getTrace() {
         return trace;
     }
 
