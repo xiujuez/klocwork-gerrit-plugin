@@ -10,8 +10,7 @@
 	"file":"/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp",
 	"method":"DhcpDebugSendPkt",
 	"owner":"unowned",
-	"taxonomyName":
-	"C and C++",
+	"taxonomyName":"C and C++",
 	"dateOriginated":1498112462078,
 	"line":37,
 	"url":"http://10.40.64.84:8080/review/insight-review.html#issuedetails_goto:problemid\u003d1030,project\u003dmaster,searchquery\u003dbuild:\u0027build_155\u0027",

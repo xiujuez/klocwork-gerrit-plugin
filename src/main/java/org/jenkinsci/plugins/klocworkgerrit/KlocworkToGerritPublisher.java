@@ -1,47 +1,33 @@
 package org.jenkinsci.plugins.klocworkgerrit;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Predicate;
-import com.google.common.base.Predicates;
-import com.google.common.collect.*;
-import com.google.gerrit.extensions.api.GerritApi;
+import com.google.common.collect.Multimap;
 import com.google.gerrit.extensions.api.changes.NotifyHandling;
 import com.google.gerrit.extensions.api.changes.ReviewInput;
-import com.google.gerrit.extensions.api.changes.RevisionApi;
-import com.google.gerrit.extensions.common.DiffInfo;
-import com.google.gerrit.extensions.common.FileInfo;
 import com.google.gerrit.extensions.restapi.RestApiException;
-import com.sonyericsson.hudson.plugins.gerrit.trigger.GerritManagement;
-import com.sonyericsson.hudson.plugins.gerrit.trigger.GerritServer;
-import com.sonyericsson.hudson.plugins.gerrit.trigger.PluginImpl;
-import com.sonyericsson.hudson.plugins.gerrit.trigger.config.IGerritHudsonTriggerConfig;
 import com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.GerritTrigger;
-import com.urswolfer.gerrit.client.rest.GerritAuthData;
-import com.urswolfer.gerrit.client.rest.GerritRestApiFactory;
 import hudson.*;
 import hudson.model.*;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
-import hudson.util.FormValidation;
 import jenkins.tasks.SimpleBuildStep;
 import org.jenkinsci.Symbol;
-import org.jenkinsci.plugins.klocworkgerrit.data.KlocworkReportBuilder;
-import org.jenkinsci.plugins.klocworkgerrit.data.converter.CustomIssueFormatter;
-import org.jenkinsci.plugins.klocworkgerrit.data.converter.CustomReportFormatter;
-import org.jenkinsci.plugins.klocworkgerrit.data.entity.Issue;
-import org.jenkinsci.plugins.klocworkgerrit.data.entity.Report;
-import org.jenkinsci.plugins.klocworkgerrit.data.entity.Severity;
-import org.jenkinsci.plugins.klocworkgerrit.data.predicates.ByMinSeverityPredicate;
-import org.jenkinsci.plugins.klocworkgerrit.data.predicates.ByNewPredicate;
+import org.jenkinsci.plugins.klocworkgerrit.config.*;
+import org.jenkinsci.plugins.klocworkgerrit.filter.IssueFilter;
+import org.jenkinsci.plugins.klocworkgerrit.inspection.entity.IssueAdapter;
+import org.jenkinsci.plugins.klocworkgerrit.inspection.entity.Severity;
+import org.jenkinsci.plugins.klocworkgerrit.inspection.klocwork.KlocworkConnector;
+import org.jenkinsci.plugins.klocworkgerrit.integration.IssueAdapterProcessor;
+import org.jenkinsci.plugins.klocworkgerrit.review.GerritConnectionInfo;
+import org.jenkinsci.plugins.klocworkgerrit.review.GerritConnector;
+import org.jenkinsci.plugins.klocworkgerrit.review.GerritReviewBuilder;
+import org.jenkinsci.plugins.klocworkgerrit.review.GerritRevisionWrapper;
+import org.jenkinsci.plugins.klocworkgerrit.util.Localization;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.DataBoundSetter;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
@@ -57,42 +43,36 @@ import static org.jenkinsci.plugins.klocworkgerrit.util.Localization.getLocalize
  */
 public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildStep {
 
-    private static final String DEFAULT_KLOCWORK_REPORT_PATH = "./klocwork-report.json";
-    private static final String DEFAULT_PROJECT_PATH = "";
-    private static final String DEFAULT_KLOCWORK_URL = "http://localhost:8080";
-    private static final String DEFAULT_CATEGORY = "Code-Review";
-    private static final int DEFAULT_SCORE = 0;
-    private static final NotifyHandling DEFAULT_NOTIFICATION_NO_ISSUES = NotifyHandling.NONE;
-    private static final NotifyHandling DEFAULT_NOTIFICATION_ISSUES = NotifyHandling.OWNER;
-
     private static final Logger LOGGER = Logger.getLogger(KlocworkToGerritPublisher.class.getName());
     public static final String GERRIT_CHANGE_NUMBER_ENV_VAR_NAME = "GERRIT_CHANGE_NUMBER";
     public static final String GERRIT_NAME_ENV_VAR_NAME = "GERRIT_NAME";
     public static final String GERRIT_PATCHSET_NUMBER_ENV_VAR_NAME = "GERRIT_PATCHSET_NUMBER";
 
-    private final String klocworkURL;
-    private List<SubJobConfig> subJobConfigs;
-    private final String severity;
-    private final boolean changedLinesOnly;
-    private final boolean newIssuesOnly;
-    private final String noIssuesToPostText;
-    private final String someIssuesToPostText;
-    private final String issueComment;
-    private final boolean overrideCredentials;
-    private final String httpUsername;
-    private final String httpPassword;
-    private final boolean postScore;
-    private final String category;
-    private final String noIssuesScore;
-    private final String issuesScore;
+    // ------------------ configuration settings
+    /*
+    * The URL of Klocwork server to be used for comments
+    * */
+    @Nonnull
+    private InspectionConfig inspectionConfig = new InspectionConfig();
 
-    private final String noIssuesNotification;
-    private final String issuesNotification;
+    @Nonnull
+    private NotificationConfig notificationConfig = new NotificationConfig();
 
-    private final boolean markFailure;
+    @Nonnull
+    private ReviewConfig reviewConfig = new ReviewConfig();
 
+    private ScoreConfig scoreConfig = null;
+
+    private GerritAuthenticationConfig authConfig = null;
+
+    private BuildResultConfig buildResultConfig = new BuildResultConfig(DescriptorImpl.MARK_FAILURE);
 
     @DataBoundConstructor
+    public KlocworkToGerritPublisher() {
+    }
+
+    //    @DataBoundConstructor
+    @Deprecated //since 2.0. Left here for Jenkins version < 1.625.3
     public KlocworkToGerritPublisher(String klocworkURL, List<SubJobConfig> subJobConfigs,
                                   String severity, boolean changedLinesOnly, boolean newIssuesOnly,
                                   String noIssuesToPostText, String someIssuesToPostText, String issueComment,
@@ -100,262 +80,113 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
                                   boolean postScore, String category, String noIssuesScore, String issuesScore,
                                   String noIssuesNotification, String issuesNotification,
                                   boolean markFailure) {
-        this.klocworkURL = MoreObjects.firstNonNull(klocworkURL, DEFAULT_KLOCWORK_URL);
-        this.subJobConfigs = subJobConfigs;
-        this.severity = MoreObjects.firstNonNull(severity, Severity.Error.name());
-        this.changedLinesOnly = changedLinesOnly;
-        this.newIssuesOnly = newIssuesOnly;
-        this.noIssuesToPostText = noIssuesToPostText;
-        this.someIssuesToPostText = someIssuesToPostText;
-        this.issueComment = issueComment;
-        this.overrideCredentials = overrideCredentials;
-        this.httpUsername = httpUsername;
-        this.httpPassword = httpPassword;
-        this.postScore = postScore;
-        this.category = MoreObjects.firstNonNull(category, DEFAULT_CATEGORY);
-        this.noIssuesScore = noIssuesScore;
-        this.issuesScore = issuesScore;
-        this.noIssuesNotification = noIssuesNotification;
-        this.issuesNotification = issuesNotification;
-        this.markFailure = markFailure;
-    }
+        setKlocworkURL(klocworkURL);
+        setSubJobConfigs(subJobConfigs);
 
-
-    @VisibleForTesting
-    static Multimap<String, Issue> generateFilenameToIssuesMapFilteredByPredicates(String workspacePath, Iterable<Issue> filtered) {
-        final Multimap<String, Issue> file2issues = LinkedListMultimap.create();
-        // generating map consisting of real file names to corresponding issues
-        // collections.
-        for (Issue issue : filtered) {
-            String realFileName = "".equals(workspacePath) ? issue.getFile() : issue.getFile().replaceFirst(workspacePath, "");
-            file2issues.put(realFileName, issue);
+        if (overrideCredentials) {
+            setAuthConfig(new GerritAuthenticationConfig(httpUsername, httpPassword));
         }
-        return file2issues;
-    }
 
+        IssueFilterConfig issueFilterConfig = new IssueFilterConfig(severity, newIssuesOnly, changedLinesOnly);
 
-    public String getSeverity() {
-        return severity;
-    }
+        ReviewConfig reviewConfig = new ReviewConfig(issueFilterConfig, noIssuesToPostText, someIssuesToPostText, issueComment);
+        setReviewConfig(reviewConfig);
 
-    public boolean isChangedLinesOnly() {
-        return changedLinesOnly;
-    }
+        if (postScore) {
+            ScoreConfig scoreConfig = new ScoreConfig(issueFilterConfig, category, Integer.parseInt(noIssuesScore), Integer.parseInt(issuesScore));
+            setScoreConfig(scoreConfig);
+        } else {
+            setScoreConfig(null);
+        }
 
-    public boolean isNewIssuesOnly() {
-        return newIssuesOnly;
-    }
+        NotificationConfig notificationConfig = new NotificationConfig(noIssuesNotification, issuesNotification, issuesNotification);
+        setNotificationConfig(notificationConfig);
 
-    public String getKlocworkURL() {
-        return klocworkURL;
-    }
-
-    public String getNoIssuesToPostText() {
-        return noIssuesToPostText;
-    }
-
-    public String getSomeIssuesToPostText() {
-        return someIssuesToPostText;
-    }
-
-    public String getIssueComment() {
-        return issueComment;
-    }
-
-    public boolean isOverrideCredentials() {
-        return overrideCredentials;
-    }
-
-    public String getHttpUsername() {
-        return httpUsername;
-    }
-
-    public String getHttpPassword() {
-        return httpPassword;
-    }
-
-    @SuppressWarnings(value = "unused")
-    public boolean isPostScore() {
-        return postScore;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    @SuppressWarnings(value = "unused")
-    public String getNoIssuesScore() {
-        return noIssuesScore;
-    }
-
-    @SuppressWarnings(value = "unused")
-    public String getNoIssuesNotification() {
-        return noIssuesNotification;
-    }
-
-    @SuppressWarnings(value = "unused")
-    public String getIssuesNotification() {
-        return issuesNotification;
-    }
-
-    public boolean isMarkFailure() {
-        return markFailure;
-    }
-
-    @SuppressWarnings(value = "unused")
-    public String getIssuesScore() {
-        return issuesScore;
+        BuildResultConfig buildResultConfig = new BuildResultConfig(markFailure);
+        setBuildResultConfig(buildResultConfig);
     }
 
     @Override
     public void perform(@Nonnull Run<?, ?> run, @Nonnull FilePath filePath, @Nonnull Launcher launcher, @Nonnull TaskListener listener) throws InterruptedException, IOException {
-        List<ReportInfo> issueInfos = readKlocworkReports(listener, filePath);
-        if (issueInfos == null) {
-            throw new AbortException(getLocalized("jenkins.plugin.validation.path.no.project.config.available"));
-        }
+        //load inspection report
+        KlocworkConnector klocworkConnector = new KlocworkConnector(listener, inspectionConfig);
+        klocworkConnector.readKlocworkReports(filePath);
+        int finalIssuesCount;
 
-        Multimap<String, Issue> file2issues = generateFilenameToIssuesMapFilteredByPredicates(issueInfos);
-        logMessage(listener, "jenkins.plugin.report.filtered.new", Level.INFO, file2issues.size());
-        // Step 3 - Prepare Gerrit REST API client
-        // Check Gerrit configuration is available
-        String gerritNameEnvVar = getEnvVar(run, listener, GERRIT_NAME_ENV_VAR_NAME);
+        //load revision info
         GerritTrigger trigger = GerritTrigger.getTrigger(run.getParent());
-        String gerritServerName = gerritNameEnvVar != null ? gerritNameEnvVar : trigger != null ? trigger.getServerName() : null;
-        if (gerritServerName == null) {
-            throw new AbortException(getLocalized("jenkins.plugin.error.gerrit.server.empty"));
-        }
-        IGerritHudsonTriggerConfig gerritConfig = GerritManagement.getConfig(gerritServerName);
-        if (gerritConfig == null) {
-            throw new AbortException(getLocalized("jenkins.plugin.error.gerrit.config.empty"));
-        }
-
-        if (!gerritConfig.isUseRestApi()) {
-            throw new AbortException(getLocalized("jenkins.plugin.error.gerrit.restapi.off"));
-        }
-        if (gerritConfig.getGerritHttpUserName() == null) {
-            throw new AbortException(getLocalized("jenkins.plugin.error.gerrit.user.empty"));
-        }
-        GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
-        GerritAuthData.Basic authData = new GerritAuthData.Basic(
-                gerritConfig.getGerritFrontEndUrl(),
-                isOverrideCredentials() ? httpUsername : gerritConfig.getGerritHttpUserName(),
-                isOverrideCredentials() ? httpPassword : gerritConfig.getGerritHttpPassword(),
-                gerritConfig.isUseRestApi());
-        GerritApi gerritApi = gerritRestApiFactory.create(authData);
+        Map<String, String> envVars = getEnvVars(run, listener, (String[]) GerritConnectionInfo.REQUIRED_VARS.toArray());
+        GerritConnectionInfo connectionInfo = new GerritConnectionInfo(envVars, trigger, authConfig);
         try {
-            String changeNStr = getEnvVar(run, listener, GERRIT_CHANGE_NUMBER_ENV_VAR_NAME);
-            if (changeNStr == null) {
-                throw new AbortException(getLocalized("jenkins.plugin.error.gerrit.change.number.empty"));
-            }
-            int changeNumber = Integer.parseInt(changeNStr);
+            GerritConnector connector = new GerritConnector(connectionInfo);
+            connector.connect();
+            GerritRevisionWrapper revisionInfo = new GerritRevisionWrapper(connector.getRevision());
+            revisionInfo.loadData();
 
-            String patchsetNStr = getEnvVar(run, listener, GERRIT_PATCHSET_NUMBER_ENV_VAR_NAME);
-            if (patchsetNStr == null) {
-                throw new AbortException(getLocalized("jenkins.plugin.error.gerrit.patchset.number.empty"));
-            }
-            int patchSetNumber = Integer.parseInt(patchsetNStr);
+            Map<String, Set<Integer>> fileToChangedLines = revisionInfo.getFileToChangedLines();
 
-            RevisionApi revision = gerritApi.changes().id(changeNumber).revision(patchSetNumber);
-            logMessage(listener, "jenkins.plugin.connected.to.gerrit", Level.INFO, new Object[]{gerritServerName, changeNumber, patchSetNumber});
-
-            // Step 4 - Filter issues by changed files
-            final Map<String, FileInfo> files = revision.files();
-            file2issues = Multimaps.filterKeys(file2issues, new Predicate<String>() {
-                @Override
-                public boolean apply(@Nullable String input) {
-                    boolean match = false;
-                    if (input != null){
-                        for (String str : files.keySet()) {
-                            match = input.indexOf(str) != -1 ? true: false;
-                            if (match) break;
-                        }
-                    }
-                    return match;
-                }
-            });
-
-            String projectPath = getProjectPath(file2issues, files);
-
-            logMessage(listener, "jenkins.plugin.report.filtered.files", Level.INFO, file2issues.size());
-
-            file2issues = replaceFilenameToIssuesMapByRevisionFilename(file2issues, files);
-
-            if (isChangedLinesOnly()) {
-                // Step 4a - Filter issues by changed lines in file only
-                filterIssuesByChangedLines(file2issues, revision);
-                logMessage(listener, "jenkins.plugin.report.filtered.lines", Level.INFO, file2issues.size());
+            //match inspection report and revision info
+            if (inspectionConfig.isPathCorrectionNeeded()) {
+                new IssueAdapterProcessor(listener, klocworkConnector, revisionInfo).process();
             }
 
-            // Step 6 - Send review to Gerrit
-            ReviewInput reviewInput = getReviewResult(file2issues, projectPath);
+            //generate review output
+            //get issues to be commented
+            Multimap<String, IssueAdapter> file2issuesToComment = getFilteredFileToIssueMultimap(
+                    reviewConfig.getIssueFilterConfig(), klocworkConnector, fileToChangedLines);
+            TaskListenerLogger.logMessage(listener, LOGGER, Level.INFO, "jenkins.plugin.issues.to.comment", file2issuesToComment.entries().size());
 
-            // Step 7 - Post review
-            revision.review(reviewInput);
-            logMessage(listener, "jenkins.plugin.review.sent", Level.INFO);
+            //get issues to be scored
+            Multimap<String, IssueAdapter> file2issuesToScore = null;
+            boolean postScore = scoreConfig != null;
+            if (postScore) {
+                file2issuesToScore = getFilteredFileToIssueMultimap(
+                        scoreConfig.getIssueFilterConfig(), klocworkConnector, fileToChangedLines);
+                TaskListenerLogger.logMessage(listener, LOGGER, Level.INFO, "jenkins.plugin.issues.to.score", file2issuesToScore.entries().size());
+            }
+
+            //send review
+            ReviewInput reviewInput = new GerritReviewBuilder(file2issuesToComment, file2issuesToScore,
+                    reviewConfig, scoreConfig, notificationConfig, inspectionConfig
+            ).buildReview();
+            revisionInfo.sendReview(reviewInput);
+
+            TaskListenerLogger.logMessage(listener, LOGGER, Level.INFO, "jenkins.plugin.review.sent");
+
+            finalIssuesCount = file2issuesToScore.size();
         } catch (RestApiException e) {
             LOGGER.log(Level.SEVERE, "Unable to post review: " + e.getMessage(), e);
             throw new AbortException("Unable to post review: " + e.getMessage());
+        } catch (NullPointerException | IllegalArgumentException | IllegalStateException e) {
+            throw new AbortException(e.getMessage());
         }
 
-        Result buildResult = getBuildResult(file2issues.size());
+        Result buildResult = getBuildResult(finalIssuesCount);
         run.setResult(buildResult);
     }
 
-    @VisibleForTesting
-    Multimap<String, Issue> generateFilenameToIssuesMapFilteredByPredicates(List<ReportInfo> issueInfos) {
-        Multimap<String, Issue> file2issues = LinkedListMultimap.create();
-        for (ReportInfo info : issueInfos) {
-
-            Report report = info.report;
-
-            // Step 1 - Filter issues by issues only predicates
-            Iterable<Issue> filtered = filterIssuesByPredicates(report.getIssues());
-
-            // Step 2 - Calculate real file name for issues and store to multimap
-            file2issues.putAll(generateFilenameToIssuesMapFilteredByPredicates(info.directoryPath, filtered));
-        }
-        return file2issues;
+    private Multimap<String, IssueAdapter> getFilteredFileToIssueMultimap(IssueFilterConfig filterConfig,
+                                                                          KlocworkConnector klocworkConnector,
+                                                                          Map<String, Set<Integer>> fileToChangedLines) {
+        IssueFilter commentFilter = new IssueFilter(filterConfig, klocworkConnector.getIssues(), fileToChangedLines);
+        Iterable<IssueAdapter> issuesToComment = commentFilter.filter();
+        return klocworkConnector.getReportData(issuesToComment);
     }
 
-    private Report readKlocworkReport(TaskListener listener, FilePath workspace, SubJobConfig config) throws IOException,
-            InterruptedException {
-        FilePath reportPath = workspace.child(config.getKlocworkReportPath());
-        if (!reportPath.exists()) {
-            logMessage(listener, "jenkins.plugin.error.klocwork.report.not.exists", Level.SEVERE, reportPath);
-            return null;
+    private Map<String, String> getEnvVars(Run<?, ?> run, TaskListener listener, String... varNames) throws IOException, InterruptedException {
+        Map<String, String> envVars = new HashMap<>();
+        for (String varName : varNames) {
+            envVars.put(varName, getEnvVar(run, listener, varName));
         }
-        logMessage(listener, "jenkins.plugin.getting.report", Level.INFO, reportPath);
-
-        KlocworkReportBuilder builder = new KlocworkReportBuilder();
-        String reportJson = reportPath.readToString();
-        Report report = builder.fromJsons(reportJson);
-        logMessage(listener, "jenkins.plugin.report.loaded", Level.INFO, report.getIssues().size());
-        return report;
+        return envVars;
     }
 
-    @VisibleForTesting
-    List<ReportInfo> readKlocworkReports(TaskListener listener, FilePath workspace) throws IOException,
-            InterruptedException {
-        List<ReportInfo> reports = new ArrayList<ReportInfo>();
-        for (SubJobConfig subJobConfig : getSubJobConfigs(false)) { // to be replaced by this.subJobConfigs in further releases - this code is to support older versions
-            Report report = readKlocworkReport(listener, workspace, subJobConfig);
-            if (report == null) {
-                return null;
-            }
-            String directoryPath = subJobConfig.getWorkspacePath();
-            if (directoryPath == null || subJobConfig.getWorkspacePath().equals("")) {
-                directoryPath = workspace.getRemote();
-            }
-            reports.add(new ReportInfo(directoryPath, report));
-        }
-        return reports;
-    }
-
-    private String getEnvVar(Run<?, ?> build, TaskListener listener, String name) throws IOException, InterruptedException {
-        EnvVars envVars = build.getEnvironment(listener);
+    private String getEnvVar(Run<?, ?> run, TaskListener listener, String name) throws IOException, InterruptedException {
+        EnvVars envVars = run.getEnvironment(listener);
         String value = envVars.get(name);
+        // due to JENKINS-30910 old versions of workflow-job-plugin do not have code copying ParameterAction values to Environment Variables in pipeline jobs.
         if (value == null) {
-            ParametersAction action = build.getAction(ParametersAction.class);
+            ParametersAction action = run.getAction(ParametersAction.class);
             if (action != null) {
                 ParameterValue parameter = action.getParameter(name);
                 if (parameter != null) {
@@ -369,151 +200,13 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
         return value;
     }
 
-    private void logMessage(TaskListener listener, String message, Level l, Object... params) {
-        message = getLocalized(message, params);
-        if (listener != null) {     // it can be it tests
-            listener.getLogger().println(message);
-        }
-        LOGGER.log(l, message);
-    }
-
-    private String getReviewMessage(Multimap<String, Issue> finalIssues) {
-        return new CustomReportFormatter(finalIssues.values(), someIssuesToPostText, noIssuesToPostText).getMessage();
-    }
-
-    private int getReviewMark(int finalIssuesCount) {
-        String mark = finalIssuesCount > 0 ? issuesScore : noIssuesScore;
-        return parseNumber(mark, DEFAULT_SCORE);
-    }
-
-    public List<SubJobConfig> getSubJobConfigs() {
-        return getSubJobConfigs(true);
-    }
-
-    public List<SubJobConfig> getSubJobConfigs(boolean addDefault) {
-        if (subJobConfigs == null) {
-            subJobConfigs = new ArrayList<SubJobConfig>();
-            if (addDefault) {
-                subJobConfigs.add(new SubJobConfig(DEFAULT_PROJECT_PATH, DEFAULT_KLOCWORK_REPORT_PATH));
-            }
-        }
-        return subJobConfigs;
-    }
-
-    private NotifyHandling getNotificationSettings(int finalIssuesCount) {
-        if (finalIssuesCount > 0) {
-            NotifyHandling value = (issuesNotification == null ? null : NotifyHandling.valueOf(issuesNotification));
-            return MoreObjects.firstNonNull(value, DEFAULT_NOTIFICATION_ISSUES);
-        } else {
-            NotifyHandling value = (noIssuesNotification == null ? null : NotifyHandling.valueOf(noIssuesNotification));
-            return MoreObjects.firstNonNull(value, DEFAULT_NOTIFICATION_NO_ISSUES);
-        }
-    }
-
     private Result getBuildResult(int finalIssuesCount) {
-        if (finalIssuesCount > 0 && isMarkFailure()) {
+        if (finalIssuesCount > 0 && getBuildResultConfig().getMarkFailure()) {
             return Result.FAILURE;
         } else {
             return Result.SUCCESS;
         }
     }
-
-    private int parseNumber(String number, int deflt) {
-        try {
-            return Integer.parseInt(number);
-        } catch (NumberFormatException e) {
-            return deflt;
-        }
-
-    }
-
-    @VisibleForTesting
-    ReviewInput getReviewResult(Multimap<String, Issue> finalIssues, String projectPath) {
-        String reviewMessage = getReviewMessage(finalIssues);
-        ReviewInput reviewInput = new ReviewInput().message(reviewMessage);
-
-        int finalIssuesCount = finalIssues.size();
-
-        reviewInput.notify = getNotificationSettings(finalIssuesCount);
-
-        if (postScore) {
-            reviewInput.label(category, getReviewMark(finalIssuesCount));
-        }
-
-        ReviewCommentFormatter commentFormatter = new ReviewCommentFormatter(projectPath, getIssueComment(), getKlocworkURL());
-        commentFormatter.generateReviewComment(reviewInput, finalIssues);
-
-        return reviewInput;
-    }
-
-    String getProjectPath(Multimap<String, Issue> file2issues, Map<String, FileInfo> files) {
-        Map<String, Collection<Issue>> file2issuesMap = file2issues.asMap();
-
-        for (String key : file2issuesMap.keySet()) {
-            for (String filename : files.keySet()) {
-                if (key.indexOf(filename) != -1) {
-                    return key.replaceFirst(filename, "");
-                }
-            }
-        }
-        return "";
-    }
-
-    Multimap<String, Issue> replaceFilenameToIssuesMapByRevisionFilename(Multimap<String, Issue> file2issues, Map<String, FileInfo> files) {
-        Multimap<String, Issue> revisionFile2issues = LinkedListMultimap.create();
-        Map<String, Collection<Issue>> file2issuesMap = file2issues.asMap();
-
-        for (String key : file2issuesMap.keySet()) {
-            for (String filename : files.keySet()) {
-                if (key.indexOf(filename) != -1) {
-                    for (Issue issue : file2issuesMap.get(key)) {
-                        revisionFile2issues.put(filename, issue);
-                    }
-                    break;
-                }
-            }
-        }
-        return revisionFile2issues;
-    }
-
-    @VisibleForTesting
-    void filterIssuesByChangedLines(Multimap<String, Issue> finalIssues, RevisionApi revision) throws RestApiException {
-        for (String filename : new HashSet<String>(finalIssues.keySet())) {
-            List<DiffInfo.ContentEntry> content = revision.file(filename).diff().content;
-            int processed = 0;
-            Set<Integer> rangeSet = new HashSet<Integer>();
-            for (DiffInfo.ContentEntry contentEntry : content) {
-                if (contentEntry.ab != null) {
-                    processed += contentEntry.ab.size();
-                } else if (contentEntry.b != null) {
-                    int start = processed + 1;
-                    int end = processed + contentEntry.b.size();
-                    for (int i = start; i <= end; i++) {    // todo use guava Range for this purpose
-                        rangeSet.add(i);
-                    }
-                    processed += contentEntry.b.size();
-                }
-            }
-
-            Collection<Issue> issues = new ArrayList<Issue>(finalIssues.get(filename));
-            for (Issue i : issues) {
-                if (!rangeSet.contains(i.getLine())) {
-                    finalIssues.get(filename).remove(i);
-                }
-            }
-        }
-    }
-
-    @VisibleForTesting
-    Iterable<Issue> filterIssuesByPredicates(List<Issue> issues) {
-        Severity sev = Severity.valueOf(severity);
-        return Iterables.filter(issues,
-                Predicates.and(
-                        ByMinSeverityPredicate.apply(sev),
-                        ByNewPredicate.apply(isNewIssuesOnly()))
-        );
-    }
-
     // Overridden for better type safety.
     // If your plugin doesn't really define any property on Descriptor,
     // you don't have to do this.
@@ -527,16 +220,6 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
         return BuildStepMonitor.NONE;
     }
 
-    @VisibleForTesting
-    static class ReportInfo {
-        private String directoryPath;
-        private Report report;
-
-        public ReportInfo(String directoryPath, Report report) {
-            this.directoryPath = directoryPath;
-            this.report = report;
-        }
-    }
 
     /**
      * Descriptor for {@link KlocworkToGerritPublisher}. Used as a singleton.
@@ -549,190 +232,40 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
+        public static final NotifyHandling NOTIFICATION_RECIPIENT_NO_ISSUES = NotifyHandling.NONE;
+        public static final NotifyHandling NOTIFICATION_RECIPIENT_SOME_ISSUES = NotifyHandling.OWNER;
+        public static final NotifyHandling NOTIFICATION_RECIPIENT_NEGATIVE_SCORE = NotifyHandling.OWNER;
+
+        public static final String PROJECT_PATH = "";
+        public static final String KLOCWORK_REPORT_PATH = "./klocwork-report.json";
+        public static final String KLOCWORK_URL = "http://localhost:8080";
+        public static final String DEFAULT_INSPECTION_CONFIG_TYPE = InspectionConfig.DescriptorImpl.BASE_TYPE;
+        public static final boolean AUTO_MATCH_INSPECTION_AND_REVISION_PATHS = false;
+
+        public static final String NO_ISSUES_TEXT = Localization.getLocalized("jenkins.plugin.default.review.title.no.issues");
+        public static final String SOME_ISSUES_TEXT = Localization.getLocalized("jenkins.plugin.default.review.title.issues");
+        public static final String ISSUE_COMMENT_TEXT = Localization.getLocalized("jenkins.plugin.default.review.body");
+
+        public static final String CATEGORY = "Code-Review";
+        public static final Integer NO_ISSUES_SCORE = 1;
+        public static final Integer SOME_ISSUES_SCORE = -1;
+
+        public static final boolean OVERRIDE_CREDENTIALS = false;
+
+        public static final String SEVERITY = Severity.Review.name();
+        public static final boolean NEW_ISSUES_ONLY = false;
+        public static final boolean CHANGED_LINES_ONLY = false;
+
+        public static final boolean MARK_FAILURE = false;
+
+        public static final int DEFAULT_SCORE = 0;
+
         /**
          * In order to load the persisted global configuration, you have to
          * call load() in the constructor.
          */
         public DescriptorImpl() {
             load();
-        }
-
-        public FormValidation doTestConnection(@QueryParameter("httpUsername") final String httpUsername,
-                                               @QueryParameter("httpPassword") final String httpPassword,
-                                               @QueryParameter("gerritServerName") final String gerritServerName) throws IOException, ServletException {
-            if (httpUsername == null) {
-                return FormValidation.error("jenkins.plugin.error.gerrit.user.empty");
-            }
-            if (gerritServerName == null) {
-                return FormValidation.error("jenkins.plugin.error.gerrit.server.empty");
-            }
-            IGerritHudsonTriggerConfig gerritConfig = GerritManagement.getConfig(gerritServerName);
-            if (gerritConfig == null) {
-                return FormValidation.error("jenkins.plugin.error.gerrit.config.empty");
-            }
-
-            if (!gerritConfig.isUseRestApi()) {
-                return FormValidation.error("jenkins.plugin.error.gerrit.restapi.off");
-            }
-
-            GerritServer server = PluginImpl.getServer_(gerritServerName);
-            if (server == null) {
-                return FormValidation.error("jenkins.plugin.error.gerrit.server.null");
-            }
-            return server.getDescriptor().doTestRestConnection(gerritConfig.getGerritFrontEndUrl(), httpUsername, httpPassword/*, gerritConfig.isUseRestApi()*/);
-
-        }
-
-        public List<String> getGerritServerNames() {
-            return PluginImpl.getServerNames_();
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'noIssuesToPostText'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckNoIssuesToPostText(@QueryParameter String value) {
-            if (value.length() == 0) {
-                return FormValidation.error(getLocalized("jenkins.plugin.validation.review.title.empty"));
-            }
-            return FormValidation.ok();
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'someIssuesToPostText'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckSomeIssuesToPostText(@QueryParameter String value) {
-            if (value.length() == 0) {
-                return FormValidation.error(getLocalized("jenkins.plugin.validation.review.title.empty"));
-            }
-            return FormValidation.ok();
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'issueComment'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckIssueComment(@QueryParameter String value) {
-            if (value.length() == 0) {
-                return FormValidation.error(getLocalized("jenkins.plugin.validation.review.body.empty"));
-            }
-            return FormValidation.ok();
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'severity'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckSeverity(@QueryParameter String value) {
-            if (value == null || Severity.valueOf(value) == null) {
-                return FormValidation.error(getLocalized("jenkins.plugin.validation.review.severity.unknown"));
-            }
-            return FormValidation.ok();
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'noIssuesScore'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckNoIssuesScore(@QueryParameter String value) {
-            return checkScore(value);
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'issuesScore'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckIssuesScore(@QueryParameter String value) {
-            return checkScore(value);
-        }
-
-        private FormValidation checkScore(@QueryParameter String value) {
-            try {
-                Integer.parseInt(value);
-            } catch (NumberFormatException e) {
-                return FormValidation.error(getLocalized("jenkins.plugin.validation.review.score.not.numeric"));
-            }
-            return FormValidation.ok();
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'noIssuesNotification'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckNoIssuesNotification(@QueryParameter String value) {
-            return checkNotificationType(value);
-        }
-
-        /**
-         * Performs on-the-fly validation of the form field 'issuesNotification'.
-         *
-         * @param value This parameter receives the value that the user has typed.
-         * @return Indicates the outcome of the validation. This is sent to the browser.
-         * <p>
-         * Note that returning {@link FormValidation#error(String)} does not
-         * prevent the form from being saved. It just means that a message
-         * will be displayed to the user.
-         */
-        @SuppressWarnings(value = "unused")
-        public FormValidation doCheckIssuesNotification(@QueryParameter String value) {
-            return checkNotificationType(value);
-        }
-
-        private FormValidation checkNotificationType(@QueryParameter String value) {
-            if (value == null || NotifyHandling.valueOf(value) == null) {
-                return FormValidation.error(getLocalized("jenkins.plugin.validation.review.notification.recipient.unknown"));
-            }
-            return FormValidation.ok();
         }
 
         @Override
@@ -749,6 +282,251 @@ public class KlocworkToGerritPublisher extends Publisher implements SimpleBuildS
             return getLocalized("jenkins.plugin.build.step.name");
         }
 
+    }
+
+    @Nonnull
+    public InspectionConfig getInspectionConfig() {
+        return inspectionConfig;
+    }
+
+    @Nonnull
+    public NotificationConfig getNotificationConfig() {
+        return notificationConfig;
+    }
+
+    @Nonnull
+    public ReviewConfig getReviewConfig() {
+        return reviewConfig;
+    }
+
+    public ScoreConfig getScoreConfig() {
+        return scoreConfig;
+    }
+
+    public GerritAuthenticationConfig getAuthConfig() {
+        return authConfig;
+    }
+
+    public BuildResultConfig getBuildResultConfig() {
+        return buildResultConfig;
+    }
+
+    @DataBoundSetter
+    public void setInspectionConfig(@Nonnull InspectionConfig inspectionConfig) {
+        this.inspectionConfig = MoreObjects.firstNonNull(inspectionConfig, new InspectionConfig());
+    }
+
+    @DataBoundSetter
+    public void setNotificationConfig(@Nonnull NotificationConfig notificationConfig) {
+        this.notificationConfig = MoreObjects.firstNonNull(notificationConfig, new NotificationConfig());
+    }
+
+    @DataBoundSetter
+    public void setReviewConfig(@Nonnull ReviewConfig reviewConfig) {
+        this.reviewConfig = MoreObjects.firstNonNull(reviewConfig, new ReviewConfig());
+    }
+
+    @DataBoundSetter
+    public void setScoreConfig(ScoreConfig scoreConfig) {
+        this.scoreConfig = scoreConfig;
+    }
+
+    @DataBoundSetter
+    public void setAuthConfig(GerritAuthenticationConfig authConfig) {
+        this.authConfig = authConfig;
+    }
+
+    @DataBoundSetter
+    public void setBuildResultConfig(BuildResultConfig buildResultConfig) {
+        this.buildResultConfig = buildResultConfig;
+    }
+
+    // --------------deprecated methods to support back compatibility
+
+    @Deprecated
+    @DataBoundSetter
+    public void setKlocworkURL(String klocworkURL) {
+        this.inspectionConfig.setServerURL(klocworkURL);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setSubJobConfigs(List<SubJobConfig> subJobConfigs) {
+        if (subJobConfigs == null || subJobConfigs.size() == 0) {
+            this.inspectionConfig.setBaseConfig(new SubJobConfig());
+            this.inspectionConfig.setSubJobConfigs(new LinkedList<SubJobConfig>());
+        } else if (subJobConfigs.size() == 1){
+            this.inspectionConfig.setBaseConfig(subJobConfigs.get(0));
+            this.inspectionConfig.setSubJobConfigs(new LinkedList<SubJobConfig>());
+        } else {
+            this.inspectionConfig.setBaseConfig(null);
+            this.inspectionConfig.setSubJobConfigs(subJobConfigs);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setSeverity(String severity) {
+        ReviewConfig reviewConfig = getReviewConfig();
+        IssueFilterConfig reviewFilterConfig = reviewConfig.getIssueFilterConfig();
+        reviewFilterConfig.setSeverity(severity);
+
+        ScoreConfig scoreConfig = getScoreConfig();
+        if (scoreConfig != null) {
+            IssueFilterConfig scoreFilterConfig = scoreConfig.getIssueFilterConfig();
+            scoreFilterConfig.setSeverity(severity);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setNewIssuesOnly(Boolean changedLinesOnly) {
+        ReviewConfig reviewConfig = getReviewConfig();
+        IssueFilterConfig reviewFilterConfig = reviewConfig.getIssueFilterConfig();
+        reviewFilterConfig.setNewIssuesOnly(changedLinesOnly);
+
+        ScoreConfig scoreConfig = getScoreConfig();
+        if (scoreConfig != null) {
+            IssueFilterConfig scoreFilterConfig = scoreConfig.getIssueFilterConfig();
+            scoreFilterConfig.setNewIssuesOnly(changedLinesOnly);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setChangedLinesOnly(Boolean changedLinesOnly) {
+        ReviewConfig reviewConfig = getReviewConfig();
+        IssueFilterConfig reviewFilterConfig = reviewConfig.getIssueFilterConfig();
+        reviewFilterConfig.setChangedLinesOnly(changedLinesOnly);
+
+        ScoreConfig scoreConfig = getScoreConfig();
+        if (scoreConfig != null) {
+            IssueFilterConfig scoreFilterConfig = scoreConfig.getIssueFilterConfig();
+            scoreFilterConfig.setChangedLinesOnly(changedLinesOnly);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setNoIssuesToPostText(String noIssuesToPost) {
+        ReviewConfig reviewConfig = getReviewConfig();
+        reviewConfig.setNoIssuesTitleTemplate(noIssuesToPost);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setSomeIssuesToPostText(String someIssuesToPost) {
+        ReviewConfig reviewConfig = getReviewConfig();
+        reviewConfig.setSomeIssuesTitleTemplate(someIssuesToPost);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setIssueComment(String issueComment) {
+        ReviewConfig reviewConfig = getReviewConfig();
+        reviewConfig.setIssueCommentTemplate(issueComment);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setOverrideCredentials(Boolean overrideCredentials) {
+        if (overrideCredentials) {
+            if (authConfig == null) {
+                authConfig = new GerritAuthenticationConfig();
+            }
+        } else {
+            authConfig = null;
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setHttpUsername(String overrideHttpUsername) {
+        if (authConfig != null) {
+            authConfig.setUsername(overrideHttpUsername);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setHttpPassword(String overrideHttpPassword) {
+        if (authConfig != null) {
+            authConfig.setPassword(overrideHttpPassword);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setPostScore(Boolean postScore) {
+        if (postScore) {
+            if (scoreConfig == null) {
+                scoreConfig = new ScoreConfig();
+            }
+        } else {
+            scoreConfig = null;
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setCategory(String category) {
+        if (scoreConfig != null) {
+            scoreConfig.setCategory(category);
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setNoIssuesScore(String score) {
+        if (scoreConfig != null) {
+            try {
+                scoreConfig.setNoIssuesScore(Integer.parseInt(score));
+            } catch (NumberFormatException nfe) {
+                // keep default
+            }
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setIssuesScore(String score) {
+        if (scoreConfig != null) {
+            try {
+                scoreConfig.setIssuesScore(Integer.parseInt(score));
+            } catch (NumberFormatException nfe) {
+                // keep default
+            }
+        }
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setNoIssuesNotification(String notification) {
+        notificationConfig.setNoIssuesNotificationRecipient(notification);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setIssuesNotification(String notification) {
+        notificationConfig.setCommentedIssuesNotificationRecipient(notification);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setProjectPath(String path) {
+        if (inspectionConfig.getBaseConfig() == null){
+            inspectionConfig.setBaseConfig(new SubJobConfig());
+        }
+        inspectionConfig.getBaseConfig().setProjectPath(path);
+    }
+
+    @Deprecated
+    @DataBoundSetter
+    public void setPath(String path) {
+        if (inspectionConfig.getBaseConfig() == null){
+            inspectionConfig.setBaseConfig(new SubJobConfig());
+        }
+        inspectionConfig.getBaseConfig().setKlocworkReportPath(path);
     }
 }
 

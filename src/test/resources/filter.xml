@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<errorList xmlns="http://www.klocwork.com/inForce/report/1.0">
+<problem>
+ <problemID>1030</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp</file>
+ <line>37</line>
+ <method>DhcpDebugSendPkt</method>
+ <code>CWARN.MEM.NONPOD</code>
+ <message>Memory manipulation routine &apos;memcpy&apos; is applied to a non-POD object</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Review</severity>
+ <severitylevel>4</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1031</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/platform/common/src/jenkins_mem.cpp</file>
+ <line>18</line>
+ <method>mem_hook_free</method>
+ <code>UFM.USE.MUST</code>
+ <message>Object &apos;ptr&apos; was used at line 198 after being freed by calling &apos;free&apos; at line 195</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Error</severity>
+ <severitylevel>2</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1032</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/lib/protobuf/google/protobuf/repeated_field.h</file>
+ <line>14</line>
+ <method>Get</method>
+ <code>LOCRET.RET</code>
+ <message>Address of a local variable is returned via return statement expression &apos;&amp;PR_NH_INFO(RepeatedPtrFieldBase::Get&lt;TypeHandler&gt; (index))&apos;.</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Critical</severity>
+ <severitylevel>1</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1033</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/proto/openflow/of_parser/source/of15common.cpp</file>
+ <line>17</line>
+ <method>operator==</method>
+ <code>ITER.END.DEREF.MIGHT</code>
+ <message>Iterator &apos;ot&apos; is dereferenced at line 175 when it can be equal to value returned by call to [r]end().</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Warning</severity>
+ <severitylevel>3</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1034</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/core/fal_agent/src/fal_agent_main.cpp</file>
+ <line>1</line>
+ <method>req_get_mac_classifer_entry</method>
+ <code>CWARN.MEM.NONPOD</code>
+ <message>Memory manipulation routine &apos;memset&apos; is applied to a non-POD object</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Review</severity>
+ <severitylevel>4</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1035</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/core/arp/src/arp_pickup.cpp</file>
+ <line>82</line>
+ <method>send_arp_req_pkt_internal</method>
+ <code>ABV.GENERAL</code>
+ <message>Array &apos;buffer.msg_body&apos; of size 1024 may use index value(s) 1024..16201</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Critical</severity>
+ <severitylevel>1</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1036</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp</file>
+ <line>54</line>
+ <method>DhcpSetPoolInfo</method>
+ <code>CWARN.MEM.NONPOD</code>
+ <message>Memory manipulation routine &apos;memset&apos; is applied to a non-POD object</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Review</severity>
+ <severitylevel>4</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1037</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/app/dhcps/src/dhcp_debug.cpp</file>
+ <line>106</line>
+ <method>DhcpSetStaticAddrInfo</method>
+ <code>CWARN.MEM.NONPOD</code>
+ <message>Memory manipulation routine &apos;memset&apos; is applied to a non-POD object</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Review</severity>
+ <severitylevel>4</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1038</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/lib/protobuf/google/protobuf/repeated_field.h</file>
+ <line>19</line>
+ <method>Get</method>
+ <code>LOCRET.RET</code>
+ <message>Address of a local variable is returned via return statement expression &apos;&amp;PR_MIX_FLOW_RULE(RepeatedPtrFieldBase::Get&lt;TypeHandler&gt; (index))&apos;.</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Critical</severity>
+ <severitylevel>1</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+<problem>
+ <problemID>1039</problemID>
+ <file>/share/wireline-vdc-jenkins/shared_work_space/c-zxj-kw-master/build/90/code/core/arp/src/arp_pickup.cpp</file>
+ <line>30</line>
+ <method>broadcastArpReq</method>
+ <code>ABV.GENERAL</code>
+ <message>Array &apos;buffer.msg_body&apos; of size 1024 may use index value(s) 1024..16201</message>
+ <citingStatus>Analyze</citingStatus>
+ <severity>Critical</severity>
+ <severitylevel>1</severitylevel>
+ <displayAs>Warning</displayAs>
+ <taxonomies>
+  <taxonomy name="C and C++" metaInf=""/>
+ </taxonomies>
+</problem>
+</errorList>

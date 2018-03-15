@@ -1,160 +1,35 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
-    <!--
-      This jelly script is used for per-project configuration.
 
-      See global.jelly for a general discussion about jelly script.
-    -->
-
-    <!--
-      Creates a text field that shows the value of the "path" property.
-      When submitted, it will be passed to the corresponding constructor parameter.
-    -->
-    <f:section title="${%jenkins.plugin.settings.section.klocwork.name}">
-        <f:entry title="${%jenkins.plugin.settings.klocwork.url}" field="klocworkURL">
-            <f:textbox default="http://localhost:8080"/>
-        </f:entry>
+    <f:section title="${%jenkins.plugin.settings.inspection.settings}">
+        <f:property title="${%jenkins.plugin.settings.inspection.settings}" field="inspectionConfig"/>
     </f:section>
 
-    <f:section title="${%jenkins.plugin.settings.section.project.name}">
-        <f:entry title="" field="subJobConfigs">
-            <f:repeatable var="subJobConfigs" items="${instance.subJobConfigs}" noAddButton="false" minimum="0">
-                <table width="100%">
-                    <f:entry title="${%jenkins.plugin.settings.klocwork.report.path}">
-                        <f:textbox field="klocworkReportPath" value="${subJobConfigs.klocworkReportPath}"
-                                   default="./klocwork-report.json"/>
-                    </f:entry>
+    <f:advanced title="${%jenkins.plugin.settings.gerrit}">
 
-                    <f:entry title="${%jenkins.plugin.settings.project.base.path}">
-                        <f:textbox field="workspacePath" value="${subJobConfigs.workspacePath}" default=""/>
-                    </f:entry>
-                    <f:entry title="">
-                        <div align="right">
-                            <f:repeatableDeleteButton/>
-                        </div>
-                    </f:entry>
-                </table>
-            </f:repeatable>
-        </f:entry>
+        <!--<f:section title="${%jenkins.plugin.settings.gerrit}">-->
 
-    </f:section>
+            <f:section title="${%jenkins.plugin.settings.gerrit.credentials}">
+                <f:optionalProperty title="${%jenkins.plugin.settings.gerrit.credentials}" field="authConfig"/>
+            </f:section>
 
-    <f:section title="${%jenkins.plugin.settings.section.filter.name}">
-        <f:entry title="${%jenkins.plugin.settings.filter.severity}" field="severity">
-            <select name="severity" field="severity">
-                <f:option value="Review" selected="${instance.Review =='REVIEW'}">${%REVIEW}</f:option>
-                <f:option value="Warning" selected="${instance.severity =='Warning'}">${%WARNING}</f:option>
-                <f:option value="Error"
-                          selected="${instance.severity =='Error' || instance.severity == null}">${%ERROR}
-                </f:option>
-                <f:option value="Critical" selected="${instance.severity =='Critical'}">${%CRITICAL}</f:option>
-            </select>
-        </f:entry>
+            <f:section title="${%jenkins.plugin.settings.gerrit.review.settings}">
+                <f:property title="${%jenkins.plugin.settings.gerrit.review}" field="reviewConfig"/>
+            </f:section>
 
-        <f:entry title="${%jenkins.plugin.settings.filter.new}" field="newIssuesOnly"
-                 description="${%jenkins.plugin.settings.filter.new.description}">
-            <f:checkbox default="true"/>
-        </f:entry>
+            <f:section title="${%jenkins.plugin.settings.gerrit.score.settings}">
+                <f:optionalProperty title="${%jenkins.plugin.settings.gerrit.score.post}" field="scoreConfig"/>
+            </f:section>
 
-        <f:entry title="${%jenkins.plugin.settings.filter.lines.changed}" field="changedLinesOnly"
-                 description="${%jenkins.plugin.settings.filter.lines.changed.description}">
-            <f:checkbox default="true"/>
-        </f:entry>
-    </f:section>
-    <f:advanced>
+            <f:section title="${%jenkins.plugin.settings.gerrit.notification.settings}">
+                <f:property title="${%jenkins.plugin.settings.gerrit.notification.settings}"
+                            field="notificationConfig"/>
+            </f:section>
 
-        <f:section title="${%jenkins.plugin.settings.section.review.format.name}">
-            <f:entry title="${%jenkins.plugin.settings.review.format.title.no.issues}" field="noIssuesToPostText">
-                <f:textbox default="${%jenkins.plugin.default.review.title.no.issues}"/>
-            </f:entry>
-            <f:entry title="${%jenkins.plugin.settings.review.format.title.issues}" field="someIssuesToPostText">
-                <f:textbox default="${%jenkins.plugin.default.review.title.issues}"/>
-            </f:entry>
-            <f:entry title="${%jenkins.plugin.settings.review.format.body}" field="issueComment">
-                <f:textarea default="${%jenkins.plugin.default.review.body}"/>
-            </f:entry>
-        </f:section>
-
-        <f:section title="${%jenkins.plugin.settings.section.gerrit.name}">
-            <f:entry title="${%jenkins.plugin.settings.gerrit.override.credentials}" field="overrideCredentials">
-                <table width="100%">
-                    <f:optionalBlock title="" inline="true" checked="${it.overrideCredentials}">
-                        <f:entry title="${%jenkins.plugin.settings.gerrit.http.credentials.username}"
-                                 field="httpUsername">
-                            <f:textbox/>
-                        </f:entry>
-                        <f:entry title="${%jenkins.plugin.settings.gerrit.http.credentials.password}"
-                                 field="httpPassword">
-                            <f:password/>
-                        </f:entry>
-
-                        <j:set var="servers" value="${descriptor.getGerritServerNames()}" />
-                        <f:entry  title="${%jenkins.plugin.settings.gerrit.http.credentials.gerritserver}" >
-                            <select  name="gerritServerName">
-                                <j:forEach var="inst" items="${servers}">
-                                    <f:option>${inst}</f:option>
-                                </j:forEach>
-                            </select>
-                        </f:entry>
-                        <f:validateButton
-                                title="${%Test Connection}" progress="${%Testing...}"
-                                method="testConnection" with="httpUsername,httpPassword,gerritServerName"/>
-                    </f:optionalBlock>
-                </table>
-            </f:entry>
-
-            <f:entry title="${%jenkins.plugin.settings.gerrit.post.score}" field="postScore">
-                <table width="100%">
-                    <f:optionalBlock title="" inline="true" checked="${it.postScore}"  default="true">
-                        <f:entry title="${%jenkins.plugin.settings.gerrit.category}" field="category">
-                            <f:textbox default="Code-Review"/>
-                        </f:entry>
-                        <f:entry title="${%jenkins.plugin.settings.gerrit.score.no.issues}" field="noIssuesScore">
-                            <f:textbox default="+1"/>
-                        </f:entry>
-                        <f:entry title="${%jenkins.plugin.settings.gerrit.score.issues}" field="issuesScore">
-                            <f:textbox default="-1"/>
-                        </f:entry>
-                    </f:optionalBlock>
-                </table>
-            </f:entry>
-        </f:section>
-
-        <f:section title="${%jenkins.plugin.settings.section.notification.settings.name}">
-            <f:entry title="${%jenkins.plugin.settings.notification.no.issues}" field="noIssuesNotification">
-                <select name="noIssuesNotification" field="severity">
-                    <f:option value="NONE"
-                              selected="${instance.noIssuesNotification =='NONE' || instance.noIssuesNotification == null}">
-                        ${%NONE}
-                    </f:option>
-                    <f:option value="OWNER" selected="${instance.noIssuesNotification =='OWNER'}">${%OWNER}</f:option>
-                    <f:option value="OWNER_REVIEWERS"
-                              selected="${instance.noIssuesNotification =='OWNER_REVIEWERS'}">${%OWNER_REVIEWERS}
-                    </f:option>
-                    <f:option value="ALL" selected="${instance.noIssuesNotification =='ALL'}">${%ALL}</f:option>
-
-                </select>
-            </f:entry>
-            <f:entry title="${%jenkins.plugin.settings.notification.issues}" field="issuesNotification">
-                <select name="issuesNotification" field="severity">
-                    <f:option value="NONE" selected="${instance.issuesNotification =='NONE'}">${%NONE}</f:option>
-                    <f:option value="OWNER"
-                              selected="${instance.issuesNotification =='OWNER'  || instance.issuesNotification == null}">
-                        ${%OWNER}
-                    </f:option>
-                    <f:option value="OWNER_REVIEWERS"
-                              selected="${instance.issuesNotification =='OWNER_REVIEWERS'}">${%OWNER_REVIEWERS}
-                    </f:option>
-                    <f:option value="ALL" selected="${instance.issuesNotification =='ALL'}">${%ALL}</f:option>
-                </select>
-            </f:entry>
-        </f:section>
-
-        <f:section title="${%jenkins.plugin.settings.section.publish.build.result.name}">
-            <f:entry title="${%jenkins.plugin.settings.mark.failure}" field="markFailure"
-                     description="${%jenkins.plugin.settings.mark.failure.description}">
-                <f:checkbox default="true"/>
-            </f:entry>
-        </f:section>
+            <f:section title="${%jenkins.plugin.settings.publish.build.result}">
+                <f:property title="${%jenkins.plugin.settings.publish.build.result}"
+                            field="buildResultConfig"/>
+            </f:section>
+        <!--</f:section>-->
     </f:advanced>
 </j:jelly>

@@ -1,0 +1,11 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+
+    <f:entry
+            title="${%jenkins.plugin.settings.mark.failure}"
+            field="markFailure"
+            description="${%jenkins.plugin.settings.mark.failure.description}">
+                <f:checkbox default="true"/>
+    </f:entry>
+
+</j:jelly>
